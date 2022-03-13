@@ -1,0 +1,8 @@
+# default
+server:
+  port: 80
+typeorm:
+  logging: false
+date:
+  locale: ja
+  timezone: Asia/Tokyo

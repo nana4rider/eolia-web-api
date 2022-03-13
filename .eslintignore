@@ -1,0 +1,3 @@
+dst
+**/*.js
+src/typeorm/migration/*.ts

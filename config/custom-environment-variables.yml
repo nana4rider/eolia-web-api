@@ -1,0 +1,6 @@
+env: NODE_ENV
+server:
+  port: PORT
+eolia:
+  userId: EOLIA_USERID
+  password: EOLIA_PASSWORD

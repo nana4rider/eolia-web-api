@@ -1,0 +1,5 @@
+# development
+typeorm:
+  logging: false
+  # advanced-console | file
+  logger: advanced-console
