@@ -30,6 +30,8 @@ rootRouter.get('/devices', async (req, res) => {
   }));
 });
 
+app.use('/', rootRouter);
+
 /**
  * 電源
  */
@@ -46,8 +48,6 @@ rootRouter.get('/power/:deviceName', async (req, res) => {
   });
 });
 
-app.use('/', rootRouter);
-
 /**
  * 温湿度計
  */
@@ -60,6 +60,7 @@ rootRouter.get('/thermohygrometer/:deviceName', async (req, res) => {
   const deviceStatus = await client.getDeviceStatus(applianceId);
 
   res.json({
+    power: deviceStatus.operation_status,
     temperature: deviceStatus.inside_temp,
     humidity: deviceStatus.inside_humidity
   });
