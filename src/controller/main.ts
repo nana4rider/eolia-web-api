@@ -14,6 +14,8 @@ const deviceNames = Object.keys(applianceIds).reduce((dict, name) => {
   return dict;
 }, {} as Record<string, string>);
 
+app.use('/', rootRouter);
+
 /**
  * デバイス一覧
  */
@@ -29,8 +31,6 @@ rootRouter.get('/devices', async (req, res) => {
     };
   }));
 });
-
-app.use('/', rootRouter);
 
 /**
  * 電源
