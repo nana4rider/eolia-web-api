@@ -243,9 +243,7 @@ function deviceController(router: Router) {
       }
     } else if (state === 'OFF') {
       if (status.operation_mode !== 'Stop') {
-        if (SUPPORT_MODES_CLEANING.includes(status.operation_mode)) {
-          status.operation_mode = 'Auto';
-        }
+        status.operation_mode = 'Auto';
         status.operation_status = false;
         await updateEoliaStatus(device, status);
       }
@@ -368,29 +366,54 @@ function deviceController(router: Router) {
       // power_command_topic
 
       // TODO
+
     } else if (command === 'preset') {
       // preset_mode_command_topic
 
       // TODO
+
     } else if (command === 'mode') {
       // mode_command_topic
+      status.operation_status = true;
 
-      // TODO
+      let nextOperationMode: EoliaOperationMode;
+      if (message === 'auto') {
+        nextOperationMode = 'Auto'; // 自動
+      } else if (message === 'cool') {
+        nextOperationMode = 'Cooling'; // 冷房
+      } else if (message === 'heat') {
+        nextOperationMode = 'Heating'; // 暖房
+      } else if (message === 'dry') {
+        nextOperationMode = 'CoolDehumidifying'; // 冷房除湿
+      } else if (message === 'fan_only') {
+        nextOperationMode = 'Blast'; // 送風
+      } else {
+        if (!status.operation_status) {
+          // 既に電源OFF
+          return;
+        }
+        nextOperationMode = 'Auto';
+        status.operation_status = false;
+      }
+
+      if (status.operation_status && nextOperationMode === status.operation_mode) {
+        // モード変更なし
+        return;
+      }
+      status.operation_mode = nextOperationMode;
+
+      await updateEoliaStatus(device, status);
     } else if (command === 'temperature') {
       // temperature_command_topic
       if (!status.operation_status) {
         return;
       }
 
-      if (message === 'low') {
-        status.wind_volume = 2;
-      } else if (message === 'medium') {
-        status.wind_volume = 3;
-      } else if (message === 'high') {
-        status.wind_volume = 4;
-      } else {
-        status.wind_volume = 0;
+      const nextTemperature = Number(message);
+      if (nextTemperature === status.temperature) {
+        return;
       }
+      status.temperature = nextTemperature;
 
       await updateEoliaStatus(device, status);
     } else if (command === 'fan_mode') {
