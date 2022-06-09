@@ -31,82 +31,80 @@ const SUPPORT_MODES_OFF = [
   'Stop'
 ];
 
-async function getDevice(deviceId: number): Promise<Device> {
-  if (isNaN(deviceId)) throw createHttpError(404);
+function deviceController(router: Router) {
 
-  const device = await getRepository(Device).findOne({ where: { id: deviceId } });
-  if (!device) throw createHttpError(404);
+  async function getDevice(deviceId: number): Promise<Device> {
+    if (isNaN(deviceId)) throw createHttpError(404);
 
-  return device;
-}
+    const device = await getRepository(Device).findOne({ where: { id: deviceId } });
+    if (!device) throw createHttpError(404);
 
-async function getEoliaStatus(device: Device): Promise<EoliaStatus> {
-  const tokenExpire = device.tokenExpire;
-  let status: EoliaStatus | undefined;
-
-  if (tokenExpire && tokenExpire.diffNow().milliseconds >= 0) {
-    // トークンの期限が有効である場合、他端末で更新できないのでDBの値を利用する
-    const statusLog = await getRepository(DeviceStatusLog).findOne({
-      where: { device },
-      order: { updatedAt: 'DESC' },
-    });
-    if (statusLog) {
-      status = statusLog.data;
-    }
+    return device;
   }
 
-  if (!status) {
-    status = await eoliaClient.getDeviceStatus(device.applianceId);
+  async function getEoliaStatus(device: Device): Promise<EoliaStatus> {
+    const tokenExpire = device.tokenExpire;
+    let status: EoliaStatus | undefined;
+
+    if (tokenExpire && tokenExpire.diffNow().milliseconds >= 0) {
+    // トークンの期限が有効である場合、他端末で更新できないのでDBの値を利用する
+      const statusLog = await getRepository(DeviceStatusLog).findOne({
+        where: { device },
+        order: { updatedAt: 'DESC' },
+      });
+      if (statusLog) {
+        status = statusLog.data;
+      }
+    }
+
+    if (!status) {
+      status = await eoliaClient.getDeviceStatus(device.applianceId);
+
+      publishMqtt(device, status);
+      await saveDatabase(device, status);
+    }
+
+    return status;
+  };
+
+  async function updateEoliaStatus(device: Device, status: EoliaStatus): Promise<EoliaStatus> {
+    const operation = eoliaClient.createOperation(status);
+    operation.operation_token = device.token;
+    status = await eoliaClient.setDeviceStatus(operation);
 
     publishMqtt(device, status);
     await saveDatabase(device, status);
-  }
 
-  return status;
-};
+    return status;
+  };
 
-async function updateEoliaStatus(device: Device, status: EoliaStatus): Promise<EoliaStatus> {
-  const operation = eoliaClient.createOperation(status);
-  operation.operation_token = device.token;
-  status = await eoliaClient.setDeviceStatus(operation);
+  async function saveDatabase(device: Device, status: EoliaStatus) {
+    const repoLog = getRepository(DeviceStatusLog);
 
-  publishMqtt(device, status);
-  await saveDatabase(device, status);
-
-  return status;
-};
-
-async function saveDatabase(device: Device, status: EoliaStatus) {
-  const repoLog = getRepository(DeviceStatusLog);
-
-  let deviceStatus = await repoLog.findOne({
-    where: {
-      device,
-      operationMode: status.operation_mode
+    let deviceStatus = await repoLog.findOne({
+      where: {
+        device,
+        operationMode: status.operation_mode
+      }
+    });
+    if (!deviceStatus) {
+      deviceStatus = repoLog.create({ device });
     }
-  });
-  if (!deviceStatus) {
-    deviceStatus = repoLog.create({ device });
+    deviceStatus.data = status;
+
+    await repoLog.save(deviceStatus);
+
+    // トークンを更新
+    if (status.operation_token) {
+      const repoDev = getRepository(Device);
+
+      device.token = status.operation_token;
+      device.tokenExpire = DateTime.local().plus(EoliaClient.OPERATION_TOKEN_LIFETIME);
+      device.deviceStatusLogs = undefined;
+
+      await repoDev.save(device);
+    }
   }
-  deviceStatus.data = status;
-
-  await repoLog.save(deviceStatus);
-
-  // トークンを更新
-  if (status.operation_token) {
-    const repoDev = getRepository(Device);
-
-    device.token = status.operation_token;
-    device.tokenExpire = DateTime.local().plus(EoliaClient.OPERATION_TOKEN_LIFETIME);
-    device.deviceStatusLogs = undefined;
-
-    await repoDev.save(device);
-  }
-}
-
-// ---- HTTP ----
-
-function deviceController(router: Router) {
 
   // ---- rest ----
 
@@ -335,176 +333,176 @@ function deviceController(router: Router) {
     }
   });
 
-}
 
-// ---- MQTT ----
+  // ---- MQTT ----
 
-const mqttClient = mqtt.connect(config.get('mqtt.broker'));
+  const mqttClient = mqtt.connect(config.get('mqtt.broker'));
 
-mqttClient.on('connect', async () => {
-  const devices = await getRepository(Device).find();
+  mqttClient.on('connect', async () => {
+    const devices = await getRepository(Device).find();
 
-  devices.forEach(device => subscribeMqtt(device.id));
-});
+    devices.forEach(device => subscribeMqtt(device.id));
+  });
 
-mqttClient.on('message', async (topic, messageBuffer) => {
-  const topicMatcher = topic.match(/^eolia\/(\d+)\/(\w+)\/set$/);
-  if (!topicMatcher) {
-    logger.error(topic);
-    return;
-  }
+  mqttClient.on('message', async (topic, messageBuffer) => {
+    const topicMatcher = topic.match(/^eolia\/(\d+)\/(\w+)\/set$/);
+    if (!topicMatcher) {
+      logger.error(topic);
+      return;
+    }
 
-  const message = messageBuffer.toString();
-  const deviceId = Number(topicMatcher[1]);
-  const command = topicMatcher[2];
+    const message = messageBuffer.toString();
+    const deviceId = Number(topicMatcher[1]);
+    const command = topicMatcher[2];
 
-  const device = await getDevice(deviceId);
-  const status = await getEoliaStatus(device);
+    const device = await getDevice(deviceId);
+    const status = await getEoliaStatus(device);
 
-  if (command === 'power') {
+    if (command === 'power') {
     // power_command_topic
 
     // TODO
-  } else if (command === 'preset') {
+    } else if (command === 'preset') {
     // preset_mode_command_topic
 
     // TODO
-  } else if (command === 'mode') {
+    } else if (command === 'mode') {
     // mode_command_topic
 
     // TODO
-  } else if (command === 'temperature') {
+    } else if (command === 'temperature') {
     // temperature_command_topic
-    if (!status.operation_status) {
-      return;
-    }
+      if (!status.operation_status) {
+        return;
+      }
 
-    if (message === 'low') {
-      status.wind_volume = 2;
-    } else if (message === 'medium') {
-      status.wind_volume = 3;
-    } else if (message === 'high') {
-      status.wind_volume = 4;
-    } else {
-      status.wind_volume = 0;
-    }
+      if (message === 'low') {
+        status.wind_volume = 2;
+      } else if (message === 'medium') {
+        status.wind_volume = 3;
+      } else if (message === 'high') {
+        status.wind_volume = 4;
+      } else {
+        status.wind_volume = 0;
+      }
 
-    await updateEoliaStatus(device, status);
-  } else if (command === 'fan_mode') {
+      await updateEoliaStatus(device, status);
+    } else if (command === 'fan_mode') {
     // fan_mode_command_topic
-    if (!status.operation_status) {
-      return;
-    }
+      if (!status.operation_status) {
+        return;
+      }
 
-    if (message === 'low') {
-      status.wind_volume = 2;
-    } else if (message === 'medium') {
-      status.wind_volume = 3;
-    } else if (message === 'high') {
-      status.wind_volume = 4;
-    } else {
-      status.wind_volume = 0;
-    }
+      if (message === 'low') {
+        status.wind_volume = 2;
+      } else if (message === 'medium') {
+        status.wind_volume = 3;
+      } else if (message === 'high') {
+        status.wind_volume = 4;
+      } else {
+        status.wind_volume = 0;
+      }
 
-    await updateEoliaStatus(device, status);
-  } else if (command === 'swing_mode') {
+      await updateEoliaStatus(device, status);
+    } else if (command === 'swing_mode') {
     // swing_mode_command_topic
-    if (!status.operation_status) {
-      return;
-    }
+      if (!status.operation_status) {
+        return;
+      }
 
-    status.wind_direction = message === 'on' ? 0 : 2;
+      status.wind_direction = message === 'on' ? 0 : 2;
 
-    await updateEoliaStatus(device, status);
-  }
-});
-
-function subscribeMqtt(deviceId: number) {
-  const topicBase = `eolia/${deviceId}`;
-
-  mqttClient.subscribe([
-    `${topicBase}/power/set`,
-    `${topicBase}/preset/set`,
-    `${topicBase}/mode/set`,
-    `${topicBase}/temperature/set`,
-    `${topicBase}/fan_mode/set`,
-    `${topicBase}/swing_mode/set`
-  ], async err => {
-    if (err) {
-      logger.error(err);
+      await updateEoliaStatus(device, status);
     }
   });
-}
 
-function unsubscribeMqtt(device: Device) {
-  const topicBase = `eolia/${device.id}`;
+  function subscribeMqtt(deviceId: number) {
+    const topicBase = `eolia/${deviceId}`;
 
-  mqttClient.unsubscribe([
-    `${topicBase}/power/set`,
-    `${topicBase}/preset/set`,
-    `${topicBase}/mode/set`,
-    `${topicBase}/temperature/set`,
-    `${topicBase}/fan_mode/set`,
-    `${topicBase}/swing_mode/set`
-  ]);
-}
+    mqttClient.subscribe([
+      `${topicBase}/power/set`,
+      `${topicBase}/preset/set`,
+      `${topicBase}/mode/set`,
+      `${topicBase}/temperature/set`,
+      `${topicBase}/fan_mode/set`,
+      `${topicBase}/swing_mode/set`
+    ], async err => {
+      if (err) {
+        logger.error(err);
+      }
+    });
+  }
 
-function publishMqtt(device: Device, status: EoliaStatus) {
-  const topicBase = `eolia/${device.id}`;
-  const options: IClientPublishOptions = { qos: 1, retain: true };
+  function unsubscribeMqtt(device: Device) {
+    const topicBase = `eolia/${device.id}`;
 
-  // power_state_topic
-  mqttClient.publish(`${topicBase}/power/get`, status.operation_status ? 'on' : 'off', options);
-  // preset_mode_state_topic
-  mqttClient.publish(`${topicBase}/preset_mode/get`, (() => {
-    if (status.ai_control === 'comfortable_econavi') {
-      return 'eco';
-    } else if (status.air_flow === 'powerful') {
-      return 'boost';
-    } else if (status.air_flow === 'quiet') {
-      return 'sleep';
-    } else {
-      return 'comfort';
-    }
-  })(), options);
-  // mode_state_topic
-  mqttClient.publish(`${topicBase}/mode/get`, (() => {
-    switch (status.operation_mode) {
-    case 'Auto': // 自動
-      return 'auto';
-    case 'Cooling': // 冷房
-      return 'cool';
-    case 'Heating': // 暖房
-      return 'heat';
-    case 'CoolDehumidifying': // 冷房除湿
-    case 'ComfortableDehumidification': // 除湿
-    case 'ClothesDryer': // 衣類乾燥
-      return 'dry';
-    case 'Blast': // 送風
-    case 'Nanoe': // ナノイー
-      return 'fan_only';
-    default: // off、掃除、その他
-      return 'off';
-    }
-  })(), options);
-  // temperature_state_topic
-  mqttClient.publish(`${topicBase}/temperature/get`, String(status.temperature), options);
-  // fan_mode_state_topic
-  mqttClient.publish(`${topicBase}/fan_mode/get`, (() => {
-    switch (status.wind_volume) {
-    case 2:
-      return 'low';
-    case 3:
-      return 'medium';
-    case 4:
-    case 5:
-      return 'high';
-    default:
-      return 'auto';
-    }
-  })(), options);
-  // swing_mode_state_topic
-  mqttClient.publish(`${topicBase}/swing_modes/get`, status.wind_direction === 0 ? 'on' : 'off', options);
+    mqttClient.unsubscribe([
+      `${topicBase}/power/set`,
+      `${topicBase}/preset/set`,
+      `${topicBase}/mode/set`,
+      `${topicBase}/temperature/set`,
+      `${topicBase}/fan_mode/set`,
+      `${topicBase}/swing_mode/set`
+    ]);
+  }
+
+  function publishMqtt(device: Device, status: EoliaStatus) {
+    const topicBase = `eolia/${device.id}`;
+    const options: IClientPublishOptions = { qos: 1, retain: true };
+
+    // power_state_topic
+    mqttClient.publish(`${topicBase}/power/get`, status.operation_status ? 'on' : 'off', options);
+    // preset_mode_state_topic
+    mqttClient.publish(`${topicBase}/preset_mode/get`, (() => {
+      if (status.ai_control === 'comfortable_econavi') {
+        return 'eco';
+      } else if (status.air_flow === 'powerful') {
+        return 'boost';
+      } else if (status.air_flow === 'quiet') {
+        return 'sleep';
+      } else {
+        return 'comfort';
+      }
+    })(), options);
+    // mode_state_topic
+    mqttClient.publish(`${topicBase}/mode/get`, (() => {
+      switch (status.operation_mode) {
+      case 'Auto': // 自動
+        return 'auto';
+      case 'Cooling': // 冷房
+        return 'cool';
+      case 'Heating': // 暖房
+        return 'heat';
+      case 'CoolDehumidifying': // 冷房除湿
+      case 'ComfortableDehumidification': // 除湿
+      case 'ClothesDryer': // 衣類乾燥
+        return 'dry';
+      case 'Blast': // 送風
+      case 'Nanoe': // ナノイー
+        return 'fan_only';
+      default: // off、掃除、その他
+        return 'off';
+      }
+    })(), options);
+    // temperature_state_topic
+    mqttClient.publish(`${topicBase}/temperature/get`, String(status.temperature), options);
+    // fan_mode_state_topic
+    mqttClient.publish(`${topicBase}/fan_mode/get`, (() => {
+      switch (status.wind_volume) {
+      case 2:
+        return 'low';
+      case 3:
+        return 'medium';
+      case 4:
+      case 5:
+        return 'high';
+      default:
+        return 'auto';
+      }
+    })(), options);
+    // swing_mode_state_topic
+    mqttClient.publish(`${topicBase}/swing_modes/get`, status.wind_direction === 0 ? 'on' : 'off', options);
+  }
 }
 
 export default deviceController;
