@@ -142,7 +142,7 @@ function deviceController(router: Router) {
       id: device.id,
       deviceName: device.deviceName,
       status: status,
-      lastMode: deviceLog?.data.operation_mode
+      lastMode: deviceLog ? deviceLog.data.operation_mode : null
     });
   });
 
