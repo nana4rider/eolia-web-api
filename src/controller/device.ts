@@ -33,11 +33,12 @@ const SUPPORT_MODES_OFF = [
 
 function deviceController(router: Router) {
 
-  async function getDevice(deviceId: number): Promise<Device> {
-    if (isNaN(deviceId)) throw createHttpError(404);
+  async function getDevice(deviceId: number): Promise<Device|undefined> {
+    if (isNaN(deviceId)) {
+      return undefined;
+    }
 
     const device = await getRepository(Device).findOne({ where: { id: deviceId } });
-    if (!device) throw createHttpError(404);
 
     return device;
   }
@@ -47,7 +48,7 @@ function deviceController(router: Router) {
     let status: EoliaStatus | undefined;
 
     if (tokenExpire && tokenExpire.diffNow().milliseconds >= 0) {
-    // トークンの期限が有効である場合、他端末で更新できないのでDBの値を利用する
+      // トークンの期限が有効である場合、他端末で更新できないのでDBの値を利用する
       const statusLog = await getRepository(DeviceStatusLog).findOne({
         where: { device },
         order: { updatedAt: 'DESC' },
@@ -129,6 +130,7 @@ function deviceController(router: Router) {
    */
   router.get('/devices/:id', async (req, res) => {
     const device = await getDevice(Number(req.params.id));
+    if (!device) throw createHttpError(404);
     const status = await getEoliaStatus(device);
 
     const deviceLog = await getRepository(DeviceStatusLog).findOne({
@@ -356,22 +358,26 @@ function deviceController(router: Router) {
     const command = topicMatcher[2];
 
     const device = await getDevice(deviceId);
+    if (!device) {
+      logger.warn('deviceId:', deviceId);
+      return;
+    }
     const status = await getEoliaStatus(device);
 
     if (command === 'power') {
-    // power_command_topic
+      // power_command_topic
 
-    // TODO
+      // TODO
     } else if (command === 'preset') {
-    // preset_mode_command_topic
+      // preset_mode_command_topic
 
-    // TODO
+      // TODO
     } else if (command === 'mode') {
-    // mode_command_topic
+      // mode_command_topic
 
-    // TODO
+      // TODO
     } else if (command === 'temperature') {
-    // temperature_command_topic
+      // temperature_command_topic
       if (!status.operation_status) {
         return;
       }
@@ -388,7 +394,7 @@ function deviceController(router: Router) {
 
       await updateEoliaStatus(device, status);
     } else if (command === 'fan_mode') {
-    // fan_mode_command_topic
+      // fan_mode_command_topic
       if (!status.operation_status) {
         return;
       }
@@ -405,7 +411,7 @@ function deviceController(router: Router) {
 
       await updateEoliaStatus(device, status);
     } else if (command === 'swing_mode') {
-    // swing_mode_command_topic
+      // swing_mode_command_topic
       if (!status.operation_status) {
         return;
       }
