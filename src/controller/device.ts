@@ -279,8 +279,6 @@ function deviceController(router: Router) {
         status.operation_status = false;
         await updateEoliaStatus(device, status);
       }
-    } else {
-      throw createHttpError(400);
     }
   });
 
