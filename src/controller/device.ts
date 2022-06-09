@@ -260,6 +260,13 @@ function deviceController(router: Router) {
     if (SUPPORT_MODES_ON.includes(mode)) {
       const operationStatus = mode as EoliaOperationMode;
       if (status.operation_mode !== operationStatus) {
+        const deviceLog = await getRepository(DeviceStatusLog).findOne({
+          where: { device, operationMode: operationStatus },
+          order: { updatedAt: 'DESC' },
+        });
+        if (deviceLog) {
+          status.temperature = deviceLog.data.temperature;
+        }
         status.operation_mode = operationStatus;
         status.operation_status = true;
         await updateEoliaStatus(device, status);
