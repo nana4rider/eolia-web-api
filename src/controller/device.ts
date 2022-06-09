@@ -243,6 +243,9 @@ function deviceController(router: Router) {
       }
     } else if (state === 'OFF') {
       if (status.operation_mode !== 'Stop') {
+        if (SUPPORT_MODES_CLEANING.includes(status.operation_mode)) {
+          status.operation_mode = 'Auto';
+        }
         status.operation_status = false;
         await updateEoliaStatus(device, status);
       }
