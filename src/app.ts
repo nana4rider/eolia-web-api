@@ -34,7 +34,7 @@ void (async () => {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   app.use(log4js.connectLogger(accessLogger, { level: 'INFO' }));
-  app.use('/', router);
+  app.use('/', router());
 
   app.use((error: Error, req: Request, res: Response, next: NextFunction) => {
     logger.error(error);
