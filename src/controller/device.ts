@@ -207,7 +207,7 @@ function deviceController(router: Router) {
    * 電源設定
    */
   router.post('/devices/:id/command/power', async (req, res) => {
-    const state = String(req.body.state);
+    const state = String(req.body.value);
     if (state !== 'ON' && state !== 'OFF') throw createHttpError(400);
 
     const device = await getDevice(Number(req.params.id));
