@@ -24,35 +24,35 @@ process.on('unhandledRejection', (reason, p) => {
   logger.error('Unhandled Rejection at:', p, 'reason:', reason);
 });
 
-// typeorm
 void (async () => {
+  // typeorm
   await createConnection(ormconfig);
   logger.info('- Connection created -');
+
+  // Express
+  const app = express();
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
+  app.use(log4js.connectLogger(accessLogger, { level: 'INFO' }));
+  app.use('/', router);
+
+  app.use((error: Error, req: Request, res: Response, next: NextFunction) => {
+    logger.error(error);
+
+    if (res.headersSent) {
+      return next(error);
+    }
+
+    if (error instanceof HttpError) {
+      res.status(error.statusCode);
+      res.send({ message: error.message });
+    } else {
+      res.status(500);
+      res.send({ message: 'エラーが発生しました。' });
+    }
+  });
+
+  app.listen(config.get('server.port'), () => {
+    logger.info('- HTTP Server Start -');
+  });
 })();
-
-// Express
-const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(log4js.connectLogger(accessLogger, { level: 'INFO' }));
-app.use('/', router);
-
-app.use((error: Error, req: Request, res: Response, next: NextFunction) => {
-  logger.error(error);
-
-  if (res.headersSent) {
-    return next(error);
-  }
-
-  if (error instanceof HttpError) {
-    res.status(error.statusCode);
-    res.send({ message: error.message });
-  } else {
-    res.status(500);
-    res.send({ message: 'エラーが発生しました。' });
-  }
-});
-
-app.listen(config.get('server.port'), () => {
-  logger.info('- HTTP Server Start -');
-});
