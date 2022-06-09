@@ -133,10 +133,16 @@ function deviceController(router: Router) {
     const device = await getDevice(Number(req.params.id));
     const status = await getEoliaStatus(device);
 
+    const deviceLog = await getRepository(DeviceStatusLog).findOne({
+      where: { device, operationMode: In(SUPPORT_MODES_ON) },
+      order: { updatedAt: 'DESC' },
+    });
+
     res.json({
       id: device.id,
       deviceName: device.deviceName,
-      status: status
+      status: status,
+      lastMode: deviceLog?.data.operation_mode
     });
   });
 
