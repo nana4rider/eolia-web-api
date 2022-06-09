@@ -33,7 +33,7 @@ const SUPPORT_MODES_OFF = [
 
 function deviceController(router: Router) {
 
-  async function getDevice(deviceId: number): Promise<Device|undefined> {
+  async function getDevice(deviceId: number): Promise<Device | undefined> {
     if (isNaN(deviceId)) {
       return undefined;
     }
@@ -209,6 +209,33 @@ function deviceController(router: Router) {
 
   // ---- command (for Alexa) ----
 
+  async function powerOn(device: Device, status: EoliaStatus) {
+    if (status.operation_status) return;
+
+    const deviceLog = await getRepository(DeviceStatusLog).findOne({
+      where: { device, operationMode: In(SUPPORT_MODES_ON) },
+      order: { updatedAt: 'DESC' },
+    });
+
+    if (deviceLog) {
+      status.operation_mode = deviceLog.data.operation_mode;
+      status.temperature = deviceLog.data.temperature;
+    } else {
+      status.operation_mode = 'Auto';
+      status.temperature = 20;
+    }
+    status.operation_status = true;
+    await updateEoliaStatus(device, status);
+  }
+
+  async function powerOff(device: Device, status: EoliaStatus) {
+    if (SUPPORT_MODES_OFF.includes(status.operation_mode)) return;
+
+    status.operation_mode = 'Auto';
+    status.operation_status = false;
+    await updateEoliaStatus(device, status);
+  }
+
   /**
    * 電源設定
    */
@@ -225,28 +252,9 @@ function deviceController(router: Router) {
     const status = await getEoliaStatus(device);
 
     if (state === 'ON') {
-      if (!status.operation_status) {
-        const deviceLog = await getRepository(DeviceStatusLog).findOne({
-          where: { device, operationMode: In(SUPPORT_MODES_ON) },
-          order: { updatedAt: 'DESC' },
-        });
-
-        if (deviceLog) {
-          status.operation_mode = deviceLog.data.operation_mode;
-          status.temperature = deviceLog.data.temperature;
-        } else {
-          status.operation_mode = 'Auto';
-          status.temperature = 20;
-        }
-        status.operation_status = true;
-        await updateEoliaStatus(device, status);
-      }
+      await powerOn(device, status);
     } else if (state === 'OFF') {
-      if (status.operation_mode !== 'Stop') {
-        status.operation_mode = 'Auto';
-        status.operation_status = false;
-        await updateEoliaStatus(device, status);
-      }
+      await powerOff(device, status);
     }
   });
 
@@ -287,12 +295,7 @@ function deviceController(router: Router) {
         await updateEoliaStatus(device, status);
       }
     } else if (SUPPORT_MODES_OFF.includes(mode)) {
-      // 停止中は何もしない
-      if (!SUPPORT_MODES_OFF.includes(status.operation_mode)) {
-        status.operation_mode = 'Auto';
-        status.operation_status = false;
-        await updateEoliaStatus(device, status);
-      }
+      await powerOff(device, status);
     }
   });
 
@@ -364,9 +367,11 @@ function deviceController(router: Router) {
 
     if (command === 'power') {
       // power_command_topic
-
-      // TODO
-
+      if (message === 'ON') {
+        await powerOn(device, status);
+      } else {
+        await powerOff(device, status);
+      }
     } else if (command === 'preset') {
       // preset_mode_command_topic
 
