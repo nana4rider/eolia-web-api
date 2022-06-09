@@ -3,10 +3,10 @@ import express, { NextFunction, Request, Response } from 'express';
 import { HttpError } from 'http-errors';
 import * as log4js from 'log4js';
 import * as luxon from 'luxon';
+import { createConnection } from 'typeorm';
 import * as log4jconfig from './config/log4js';
-import Context from './Context';
-
-const { app } = Context;
+import * as ormconfig from './config/ormconfig';
+import router from './router';
 
 // Luxon
 const locale: string = config.get('date.locale');
@@ -24,13 +24,18 @@ process.on('unhandledRejection', (reason, p) => {
   logger.error('Unhandled Rejection at:', p, 'reason:', reason);
 });
 
+// typeorm
+void (async () => {
+  await createConnection(ormconfig);
+  logger.info('- Connection created -');
+})();
+
 // Express
+const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(log4js.connectLogger(accessLogger, { level: 'INFO' }));
-
-// Web apps
-require('./controller/main');
+app.use('/', router);
 
 app.use((error: Error, req: Request, res: Response, next: NextFunction) => {
   logger.error(error);

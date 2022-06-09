@@ -1,5 +1,0 @@
-device:
-  applianceIds:
-    livingroom: {applianceId}
-    bedroom: {applianceId}
-    kidsroom: {applianceId}

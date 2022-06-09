@@ -4,3 +4,7 @@ server:
 eolia:
   userId: EOLIA_USERID
   password: EOLIA_PASSWORD
+rest:
+  apikey: REST_API_KEY
+mqtt:
+  broker: MQTT_BROKER
