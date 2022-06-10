@@ -20,7 +20,8 @@ const SUBSCRIBE_TOPIC_NAMES = [
   'fan_mode',
   'swing_mode',
   'wind_direction',
-  'wind_direction_horizon'
+  'wind_direction_horizon',
+  'off_timer',
 ];
 
 async function initMqtt() {
@@ -138,6 +139,9 @@ function publishMqtt(device: Device, status: EoliaStatus) {
 
   // MQTT Select
   mqttClient.publish(`${topicBase}/wind_direction_horizon/get`, status.wind_direction_horizon, options);
+
+  // MQTT Select
+  mqttClient.publish(`${topicBase}/off_timer/get`, status.timer_value === 0 ? 'off' : String(status.timer_value), options);
 }
 
 async function receiveMqtt(topic: string, payload: Buffer, packet: mqtt.IPublishPacket): Promise<void> {
@@ -262,7 +266,7 @@ async function receiveMqtt(topic: string, payload: Buffer, packet: mqtt.IPublish
     } else if (message === 'OFF') {
       await powerOff(device, status);
     }
-  }else if (command === 'wind_direction') {
+  } else if (command === 'wind_direction') {
     // MQTT Select
     const windDirection = Number(message);
 
@@ -277,6 +281,13 @@ async function receiveMqtt(topic: string, payload: Buffer, packet: mqtt.IPublish
     if (windDirectionHorizon === 'auto' || windDirectionHorizon === 'nearby_left' || windDirectionHorizon === 'to_left'
       || windDirectionHorizon === 'to_right' || windDirectionHorizon === 'nearby_right' || windDirectionHorizon === 'front') {
       status.wind_direction_horizon = windDirectionHorizon;
+      await updateEoliaStatus(device, status);
+    }
+  } else if (command === 'off_timer') {
+    // MQTT Select
+    const offTimer = message === 'off' ? 0 : Number(message);
+    if (offTimer === 0 || offTimer === 30 || offTimer === 60 || offTimer === 90 || offTimer === 120) {
+      status.timer_value = offTimer;
       await updateEoliaStatus(device, status);
     }
   }
