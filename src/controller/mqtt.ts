@@ -74,7 +74,9 @@ function publishMqtt(device: Device, status: EoliaStatus) {
 
   // MQTT HVAC preset_mode_state_topic
   mqttClient.publish(`${topicBase}/preset_mode/get`, (() => {
-    if (status.ai_control === 'comfortable_econavi') {
+    if (status.operation_mode === 'NanoexCleaning') {
+      return 'away';
+    } else if (status.ai_control === 'comfortable_econavi') {
       return 'eco';
     } else if (status.air_flow === 'powerful') {
       return 'boost';
@@ -173,7 +175,10 @@ async function receiveMqtt(topic: string, payload: Buffer, packet: mqtt.IPublish
 
   if (command === 'preset_mode') {
     // MQTT HVAC preset_mode_command_topic
-    if (message === 'eco') {
+    if (message === 'away') {
+      status.operation_mode = 'NanoexCleaning';
+      status.operation_status = false;
+    } else if (message === 'eco') {
       if (status.air_flow !== 'not_set') {
         status.air_flow = 'not_set';
         status.wind_volume = 0;
