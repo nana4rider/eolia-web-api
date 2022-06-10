@@ -9,7 +9,7 @@ import { getDevice, getEoliaStatus, powerOff, powerOn, updateEoliaStatus } from 
 
 const logger = log4js.getLogger();
 
-const mqttClient = mqtt.connect(config.get('mqtt.broker'));
+let mqttClient: mqtt.Client | undefined = undefined;
 
 const SUBSCRIBE_TOPIC_NAMES = [
   'power',
@@ -24,6 +24,8 @@ const SUBSCRIBE_TOPIC_NAMES = [
 
 async function initMqtt() {
   return new Promise<void>((resolve, reject) => {
+    mqttClient = mqtt.connect(config.get('mqtt.broker'));
+
     mqttClient.on('connect', async () => {
       const devices = await getRepository(Device).find();
 
@@ -37,6 +39,8 @@ async function initMqtt() {
 }
 
 function subscribeMqtt(deviceId: number) {
+  if (!mqttClient) throw new Error('Not initialized');
+
   mqttClient.subscribe(SUBSCRIBE_TOPIC_NAMES.map(name => `eolia/${deviceId}/${name}/set`), async err => {
     if (err) {
       logger.error(err);
@@ -45,10 +49,14 @@ function subscribeMqtt(deviceId: number) {
 }
 
 function unsubscribeMqtt(device: Device) {
+  if (!mqttClient) throw new Error('Not initialized');
+
   mqttClient.unsubscribe(SUBSCRIBE_TOPIC_NAMES.map(name => `eolia/${device.id}/${name}/set`));
 }
 
 function publishMqtt(device: Device, status: EoliaStatus) {
+  if (!mqttClient) throw new Error('Not initialized');
+
   const topicBase = `eolia/${device.id}`;
   const options: IClientPublishOptions = { qos: 1, retain: true };
 
@@ -237,7 +245,7 @@ async function receiveMqtt(topic: string, payload: Buffer, packet: mqtt.IPublish
     const windDirection = Number(message);
 
     if (windDirection === 0 || windDirection === 1 || windDirection === 2
-        || windDirection === 3 || windDirection === 4 || windDirection === 5) {
+      || windDirection === 3 || windDirection === 4 || windDirection === 5) {
       status.wind_direction = windDirection;
       await updateEoliaStatus(device, status);
     }
@@ -245,7 +253,7 @@ async function receiveMqtt(topic: string, payload: Buffer, packet: mqtt.IPublish
     // MQTT Select
     const windDirectionHorizon = message;
     if (windDirectionHorizon === 'auto' || windDirectionHorizon === 'nearby_left' || windDirectionHorizon === 'to_left'
-        || windDirectionHorizon === 'to_right' || windDirectionHorizon === 'nearby_right' || windDirectionHorizon === 'front') {
+      || windDirectionHorizon === 'to_right' || windDirectionHorizon === 'nearby_right' || windDirectionHorizon === 'front') {
       status.wind_direction_horizon = windDirectionHorizon;
       await updateEoliaStatus(device, status);
     }
