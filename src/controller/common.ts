@@ -54,7 +54,6 @@ async function getEoliaStatus(device: Device): Promise<EoliaStatus> {
   if (!status) {
     status = await eoliaClient.getDeviceStatus(device.applianceId);
 
-    publishMqtt(device, status);
     await saveDatabase(device, status);
   }
 

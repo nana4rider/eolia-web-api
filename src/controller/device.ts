@@ -6,7 +6,7 @@ import { getRepository, In } from 'typeorm';
 import { Device } from '../entity/Device';
 import { DeviceStatusLog } from '../entity/DeviceStatusLog';
 import { eoliaClient, getDevice, getEoliaStatus, SUPPORT_MODES_ON } from './common';
-import { subscribeMqtt, unsubscribeMqtt } from './mqtt';
+import { publishMqtt, subscribeMqtt, unsubscribeMqtt } from './mqtt';
 
 const logger = log4js.getLogger();
 
@@ -34,6 +34,8 @@ function deviceController(router: Router) {
     const device = await getDevice(Number(req.params.id));
     if (!device) throw createHttpError(StatusCodes.NOT_FOUND);
     const status = await getEoliaStatus(device);
+
+    publishMqtt(device, status);
 
     const deviceLog = await getRepository(DeviceStatusLog).findOne({
       where: { device, operationMode: In(SUPPORT_MODES_ON) },
