@@ -2,9 +2,10 @@ import config from 'config';
 import * as log4js from 'log4js';
 import * as mqtt from 'mqtt';
 import { IClientPublishOptions } from 'mqtt';
-import { EoliaStatus } from 'panasonic-eolia-ts';
+import { EoliaClient, EoliaStatus } from 'panasonic-eolia-ts';
 import { getRepository } from 'typeorm';
 import { Device } from '../entity/Device';
+import { DeviceStatusLog } from '../entity/DeviceStatusLog';
 import { getDevice, getEoliaStatus, powerOff, powerOn, updateEoliaStatus } from './common';
 
 const logger = log4js.getLogger();
@@ -13,7 +14,7 @@ let mqttClient: mqtt.Client | undefined = undefined;
 
 const SUBSCRIBE_TOPIC_NAMES = [
   'power',
-  'preset',
+  'preset_mode',
   'mode',
   'temperature',
   'fan_mode',
@@ -77,13 +78,19 @@ function publishMqtt(device: Device, status: EoliaStatus) {
       return 'boost';
     } else if (status.air_flow === 'quiet') {
       return 'sleep';
-    } else {
+    } else if (status.ai_control === 'comfortable') {
       return 'comfort';
+    } else {
+      return 'none';
     }
   })(), options);
 
   // MQTT HVAC mode_state_topic
   mqttClient.publish(`${topicBase}/mode/get`, (() => {
+    if (!status.operation_status) {
+      return 'off';
+    }
+
     switch (status.operation_mode) {
     case 'Auto': // 自動
       return 'auto';
@@ -104,7 +111,9 @@ function publishMqtt(device: Device, status: EoliaStatus) {
   })(), options);
 
   // MQTT HVAC temperature_state_topic
-  mqttClient.publish(`${topicBase}/temperature/get`, String(status.temperature), options);
+  mqttClient.publish(`${topicBase}/temperature/get`,
+    status.operation_status && EoliaClient.isTemperatureSupport(status.operation_mode)
+      ? String(status.temperature) : '0', options);
 
   // MQTT HVAC fan_mode_state_topic
   mqttClient.publish(`${topicBase}/fan_mode/get`, (() => {
@@ -161,7 +170,7 @@ async function receiveMqtt(topic: string, payload: Buffer, packet: mqtt.IPublish
     } else if (message === 'OFF') {
       await powerOff(device, status);
     }
-  } else if (command === 'preset') {
+  } else if (command === 'preset_mode') {
     // MQTT HVAC preset_mode_command_topic
     if (message === 'eco') {
       if (status.air_flow !== 'not_set') {
@@ -172,6 +181,7 @@ async function receiveMqtt(topic: string, payload: Buffer, packet: mqtt.IPublish
     } else if (message === 'boost') {
       status.air_flow = 'powerful';
       status.wind_volume = 0;
+      status.ai_control = 'off';
     } else if (message === 'sleep') {
       status.air_flow = 'quiet';
       status.wind_volume = 0;
@@ -182,6 +192,8 @@ async function receiveMqtt(topic: string, payload: Buffer, packet: mqtt.IPublish
       }
       status.ai_control = 'comfortable';
       status.nanoex = true;
+    } else if (message === 'none') {
+      status.ai_control = 'off';
     } else {
       return;
     }
@@ -208,9 +220,19 @@ async function receiveMqtt(topic: string, payload: Buffer, packet: mqtt.IPublish
 
     status.operation_status = true;
 
+    const deviceLog = await getRepository(DeviceStatusLog).findOne({
+      where: { device, operationMode: status.operation_mode },
+      order: { updatedAt: 'DESC' },
+    });
+    if (deviceLog) {
+      status.temperature = deviceLog.data.temperature;
+    }
+
     await updateEoliaStatus(device, status);
   } else if (command === 'temperature') {
     // MQTT HVAC temperature_command_topic
+    if (!EoliaClient.isTemperatureSupport(status.operation_mode)) return;
+
     status.temperature = Number(message);
 
     await updateEoliaStatus(device, status);
