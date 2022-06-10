@@ -53,7 +53,7 @@ function publishMqtt(device: Device, status: EoliaStatus) {
   const options: IClientPublishOptions = { qos: 1, retain: true };
 
   // MQTT HVAC current_temperature_topic
-  mqttClient.publish(`${topicBase}/current_temperature/get`, String(status.temperature), options);
+  mqttClient.publish(`${topicBase}/current_temperature/get`, String(status.inside_temp), options);
 
   // MQTT Sensor 湿度計
   mqttClient.publish(`${topicBase}/current_humidity/get`, String(status.inside_humidity), options);
