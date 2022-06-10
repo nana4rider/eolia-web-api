@@ -62,10 +62,10 @@ async function getEoliaStatus(device: Device): Promise<EoliaStatus> {
 
 const updateLock = new Set<number>();
 
-async function updateEoliaStatus(device: Device, status: EoliaStatus): Promise<EoliaStatus> {
+async function updateEoliaStatus(device: Device, status: EoliaStatus): Promise<void> {
   const deviceId = device.id;
   if (updateLock.has(deviceId)) {
-    throw new Error('Updating');
+    return;
   }
 
   try {
@@ -79,8 +79,6 @@ async function updateEoliaStatus(device: Device, status: EoliaStatus): Promise<E
 
     publishMqtt(device, status);
     await saveDatabase(device, status);
-
-    return status;
   } finally {
     updateLock.delete(deviceId);
   }
