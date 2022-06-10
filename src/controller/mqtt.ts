@@ -76,6 +76,8 @@ function publishMqtt(device: Device, status: EoliaStatus) {
   mqttClient.publish(`${topicBase}/preset_mode/get`, (() => {
     if (status.operation_mode === 'NanoexCleaning') {
       return 'away';
+    } else if (!status.operation_status) {
+      return 'none';
     } else if (status.ai_control === 'comfortable_econavi') {
       return 'eco';
     } else if (status.air_flow === 'powerful') {
@@ -168,7 +170,10 @@ async function receiveMqtt(topic: string, payload: Buffer, packet: mqtt.IPublish
   }
   const status = await getEoliaStatus(device);
 
-  if (!status.operation_status && command !== 'power' && command !== 'mode') {
+  if (!status.operation_status
+    && !(
+      command === 'power' || command === 'mode' || (command === 'preset_mode' && message === 'away')
+    )) {
     // 電源OFF時はpowerとmodeのみ利用できる
     return;
   }
