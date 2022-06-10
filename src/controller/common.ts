@@ -70,6 +70,8 @@ async function updateEoliaStatus(device: Device, status: EoliaStatus): Promise<E
 
   try {
     updateLock.add(deviceId);
+    // 更新に時間がかかるため更新前にも配信する
+    publishMqtt(device, status);
 
     const operation = eoliaClient.createOperation(status);
     operation.operation_token = device.token;
