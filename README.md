@@ -30,6 +30,21 @@ mqtt:
       temperature_state_topic: 'eolia/:deviceId/temperature/get'
       fan_mode_command_topic: 'eolia/:deviceId/fan_mode/set'
       fan_mode_state_topic: 'eolia/:deviceId/fan_mode/get'
-      swing_mode_command_topic: 'eolia/:deviceId/swing_mode/set'
-      swing_mode_state_topic: 'eolia/:deviceId/swing_mode/get'
+  select:
+    - name: "エアコン_ナノイーX"
+      options: ["on", "off"]
+      command_topic: "eolia/:deviceId/nanoex/set"
+      state_topic: "eolia/:deviceId/nanoex/get"
+    - name: "エアコン_上下風向"
+      options: ["auto", "1", "2", "3", "4", "5"]
+      command_topic: "eolia/:deviceId/wind_direction/set"
+      state_topic: "eolia/:deviceId/wind_direction/get"
+    - name: "エアコン_左右風向"
+      options: ["auto", "to_left", "nearby_left", "front", "nearby_right", "to_right"]
+      command_topic: "eolia/:deviceId/wind_direction_horizon/set"
+      state_topic: "eolia/:deviceId/wind_direction_horizon/get"
+    - name: "エアコン_切タイマー"
+      options: ["off", "30min", "60min", "90min", "120min"]
+      command_topic: "eolia/:deviceId/off_timer/set"
+      state_topic: "eolia/:deviceId/off_timer/get"
 ```
