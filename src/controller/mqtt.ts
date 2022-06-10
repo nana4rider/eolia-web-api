@@ -19,6 +19,7 @@ const SUBSCRIBE_TOPIC_NAMES = [
   'temperature',
   'fan_mode',
   'swing_mode',
+  'nanoex',
   'wind_direction',
   'wind_direction_horizon',
   'off_timer',
@@ -135,6 +136,9 @@ function publishMqtt(device: Device, status: EoliaStatus) {
   mqttClient.publish(`${topicBase}/swing_mode/get`, status.wind_direction === 0 ? 'on' : 'off', options);
 
   // MQTT Select
+  mqttClient.publish(`${topicBase}/nanoex/get`, status.nanoex ? 'on' : 'off', options);
+
+  // MQTT Select
   mqttClient.publish(`${topicBase}/wind_direction/get`, status.wind_direction === 0 ? 'auto' : String(status.wind_direction), options);
 
   // MQTT Select
@@ -188,7 +192,6 @@ async function receiveMqtt(topic: string, payload: Buffer, packet: mqtt.IPublish
         status.wind_volume = 0;
       }
       status.ai_control = 'comfortable';
-      status.nanoex = true;
     } else if (message === 'none') {
       status.ai_control = 'off';
     } else {
@@ -266,6 +269,10 @@ async function receiveMqtt(topic: string, payload: Buffer, packet: mqtt.IPublish
     } else if (message === 'OFF') {
       await powerOff(device, status);
     }
+  } else if (command === 'nanoex') {
+    // MQTT Select
+    status.nanoex = message === 'on';
+    await updateEoliaStatus(device, status);
   } else if (command === 'wind_direction') {
     // MQTT Select
     const windDirection = message === 'auto' ? 0 : Number(message);
