@@ -44,16 +44,16 @@ function deviceCommandController(router: Router) {
     const status = await getEoliaStatus(device);
 
     if (SUPPORT_MODES_ON.includes(mode)) {
-      const operationStatus = mode as EoliaOperationMode;
-      if (status.operation_mode !== operationStatus) {
+      const operationMode = mode as EoliaOperationMode;
+      if (status.operation_mode !== operationMode) {
         const deviceLog = await getRepository(DeviceStatusLog).findOne({
-          where: { device, operationMode: operationStatus },
+          where: { device, operationMode: operationMode },
           order: { updatedAt: 'DESC' },
         });
         if (deviceLog) {
           status.temperature = deviceLog.data.temperature;
         }
-        status.operation_mode = operationStatus;
+        status.operation_mode = operationMode;
         status.operation_status = true;
         await updateEoliaStatus(device, status);
       }
