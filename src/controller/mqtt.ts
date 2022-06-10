@@ -141,7 +141,7 @@ function publishMqtt(device: Device, status: EoliaStatus) {
   mqttClient.publish(`${topicBase}/wind_direction_horizon/get`, status.wind_direction_horizon, options);
 
   // MQTT Select
-  mqttClient.publish(`${topicBase}/off_timer/get`, status.timer_value === 0 ? 'off' : String(status.timer_value), options);
+  mqttClient.publish(`${topicBase}/off_timer/get`, status.timer_value === 0 ? 'off' : String(status.timer_value) + 'min', options);
 }
 
 async function receiveMqtt(topic: string, payload: Buffer, packet: mqtt.IPublishPacket): Promise<void> {
@@ -285,7 +285,7 @@ async function receiveMqtt(topic: string, payload: Buffer, packet: mqtt.IPublish
     }
   } else if (command === 'off_timer') {
     // MQTT Select
-    const offTimer = message === 'off' ? 0 : Number(message);
+    const offTimer = message === 'off' ? 0 : parseInt(message);
     if (offTimer === 0 || offTimer === 30 || offTimer === 60 || offTimer === 90 || offTimer === 120) {
       status.timer_value = offTimer;
       await updateEoliaStatus(device, status);
