@@ -163,14 +163,7 @@ async function receiveMqtt(topic: string, payload: Buffer, packet: mqtt.IPublish
     return;
   }
 
-  if (command === 'power') {
-    // MQTT HVAC power_command_topic
-    if (message === 'ON') {
-      await powerOn(device, status);
-    } else if (message === 'OFF') {
-      await powerOff(device, status);
-    }
-  } else if (command === 'preset_mode') {
+  if (command === 'preset_mode') {
     // MQTT HVAC preset_mode_command_topic
     if (message === 'eco') {
       if (status.air_flow !== 'not_set') {
@@ -262,7 +255,14 @@ async function receiveMqtt(topic: string, payload: Buffer, packet: mqtt.IPublish
     }
 
     await updateEoliaStatus(device, status);
-  } else if (command === 'wind_direction') {
+  } else if (command === 'power') {
+    // MQTT Switch 電源
+    if (message === 'ON') {
+      await powerOn(device, status);
+    } else if (message === 'OFF') {
+      await powerOff(device, status);
+    }
+  }else if (command === 'wind_direction') {
     // MQTT Select
     const windDirection = Number(message);
 
