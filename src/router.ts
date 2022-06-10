@@ -4,6 +4,7 @@ import createHttpError from 'http-errors';
 import passport from 'passport';
 import { HeaderAPIKeyStrategy } from 'passport-headerapikey';
 import deviceController from './controller/device';
+import deviceCommandController from './controller/device_command';
 
 export default () => {
   const router = PromiseRouter();
@@ -22,6 +23,7 @@ export default () => {
   router.use('/', passport.authenticate('headerapikey', { session: false }));
 
   deviceController(router);
+  deviceCommandController(router);
 
   return router;
 };

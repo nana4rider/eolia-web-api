@@ -6,6 +6,7 @@ import * as luxon from 'luxon';
 import { createConnection } from 'typeorm';
 import * as log4jconfig from './config/log4js';
 import * as ormconfig from './config/ormconfig';
+import { initMqtt } from './controller/mqtt';
 import router from './router';
 
 // Luxon
@@ -27,7 +28,9 @@ process.on('unhandledRejection', (reason, p) => {
 void (async () => {
   // typeorm
   await createConnection(ormconfig);
-  logger.info('- Connection created -');
+  logger.info('- DB Connection created -');
+  await initMqtt();
+  logger.info('- MQTT Connection created -');
 
   // Express
   const app = express();
