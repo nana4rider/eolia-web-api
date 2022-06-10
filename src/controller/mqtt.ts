@@ -135,7 +135,7 @@ function publishMqtt(device: Device, status: EoliaStatus) {
   mqttClient.publish(`${topicBase}/swing_mode/get`, status.wind_direction === 0 ? 'on' : 'off', options);
 
   // MQTT Select
-  mqttClient.publish(`${topicBase}/wind_direction/get`, String(status.wind_direction), options);
+  mqttClient.publish(`${topicBase}/wind_direction/get`, status.wind_direction === 0 ? 'auto' : String(status.wind_direction), options);
 
   // MQTT Select
   mqttClient.publish(`${topicBase}/wind_direction_horizon/get`, status.wind_direction_horizon, options);
@@ -268,7 +268,7 @@ async function receiveMqtt(topic: string, payload: Buffer, packet: mqtt.IPublish
     }
   } else if (command === 'wind_direction') {
     // MQTT Select
-    const windDirection = Number(message);
+    const windDirection = message === 'auto' ? 0 : Number(message);
 
     if (windDirection === 0 || windDirection === 1 || windDirection === 2
       || windDirection === 3 || windDirection === 4 || windDirection === 5) {
