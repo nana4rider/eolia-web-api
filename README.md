@@ -30,6 +30,8 @@ mqtt:
       temperature_state_topic: 'eolia/:deviceId/temperature/get'
       fan_mode_command_topic: 'eolia/:deviceId/fan_mode/set'
       fan_mode_state_topic: 'eolia/:deviceId/fan_mode/get'
+      swing_mode_command_topic: 'eolia/:deviceId/swing_mode/set'
+      swing_mode_state_topic: 'eolia/:deviceId/swing_mode/get'
   select:
     - name: "エアコン_ナノイーX"
       options: ["on", "off"]
