@@ -2,6 +2,7 @@ import { Router } from 'express';
 import PromiseRouter from 'express-promise-router';
 import createHttpError from 'http-errors';
 import { StatusCodes } from 'http-status-codes';
+import { DateTime } from 'luxon';
 import { EoliaClient, EoliaOperationMode } from 'panasonic-eolia-ts';
 import { getRepository, In } from 'typeorm';
 import { Device } from '../entity/Device';
@@ -13,7 +14,7 @@ function deviceCommandController(router: Router) {
   router.use('/devices/:id/command', commandRouter);
 
   commandRouter.use(async (req, res, next) => {
-    const id  = Number(req.params.id);
+    const id = Number(req.params.id);
     const device = await getDevice(id);
     if (!device) {
       throw createHttpError(StatusCodes.NOT_FOUND);
@@ -28,7 +29,9 @@ function deviceCommandController(router: Router) {
   commandRouter.post('/power', async (req, res) => {
     const device: Device = res.locals.device;
     const state = String(req.body.value);
-    if (state !== 'ON' && state !== 'OFF') throw createHttpError(StatusCodes.BAD_REQUEST);
+    if (state !== 'ON' && state !== 'OFF' && state !== 'AUTO') {
+      throw createHttpError(StatusCodes.BAD_REQUEST);
+    }
 
     res.status(StatusCodes.ACCEPTED).send();
 
@@ -39,6 +42,45 @@ function deviceCommandController(router: Router) {
       await powerOn(device, status);
     } else if (state === 'OFF') {
       await powerOff(device, status);
+    } else if (state === 'AUTO') {
+      if (status.operation_status) return;
+
+      let operationMode: EoliaOperationMode | undefined = undefined;
+      const month = DateTime.local().month;
+
+      if ([6, 7, 8, 9].includes(month)) {
+        // 夏
+        if (status.inside_temp > 28) {
+          // 湿度が高い場合は冷房除湿
+          if (status.inside_humidity >= 70) {
+            operationMode = 'CoolDehumidifying';
+          } else {
+            operationMode = 'Cooling';
+          }
+        }
+      } else if ([11, 12, 1, 2, 3].includes(month)) {
+        // 冬
+        if (status.inside_temp < 20) {
+          operationMode = 'Heating';
+        }
+      }
+
+      if (!operationMode) {
+        return;
+      }
+
+      // 電源が切れている場合は、モードを復元して温度設定する
+      const deviceLog = await getRepository(DeviceStatusLog).findOne({
+        where: { device, operationMode: operationMode }
+      });
+      if (deviceLog) {
+        status.temperature = deviceLog.data.temperature;
+      }
+
+      status.operation_mode = operationMode;
+      status.operation_status = true;
+
+      await updateEoliaStatus(device, status);
     }
   });
 
@@ -58,8 +100,7 @@ function deviceCommandController(router: Router) {
       const operationMode = mode as EoliaOperationMode;
       if (status.operation_mode !== operationMode) {
         const deviceLog = await getRepository(DeviceStatusLog).findOne({
-          where: { device, operationMode: operationMode },
-          order: { updatedAt: 'DESC' },
+          where: { device, operationMode: operationMode }
         });
         if (deviceLog) {
           status.temperature = deviceLog.data.temperature;
