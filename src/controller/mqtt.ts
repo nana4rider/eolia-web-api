@@ -140,7 +140,7 @@ function publishMqtt(device: Device, status: EoliaStatus) {
   mqttClient.publish(`${topicBase}/swing_mode/get`, status.wind_direction === 0 ? 'on' : 'off', options);
 
   // MQTT Select
-  mqttClient.publish(`${topicBase}/nanoex/get`, status.nanoex ? 'on' : 'off', options);
+  mqttClient.publish(`${topicBase}/nanoex/get`, status.nanoex ? 'ON' : 'OFF', options);
 
   // MQTT Select
   mqttClient.publish(`${topicBase}/wind_direction/get`, status.wind_direction === 0 ? 'auto' : String(status.wind_direction), options);
@@ -281,7 +281,7 @@ async function receiveMqtt(topic: string, payload: Buffer, packet: mqtt.IPublish
     }
   } else if (command === 'nanoex') {
     // MQTT Select
-    status.nanoex = message === 'on';
+    status.nanoex = message === 'ON';
     await updateEoliaStatus(device, status);
   } else if (command === 'wind_direction') {
     // MQTT Select
