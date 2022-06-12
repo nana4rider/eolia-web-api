@@ -1,21 +1,34 @@
 import { Router } from 'express';
+import PromiseRouter from 'express-promise-router';
 import createHttpError from 'http-errors';
 import { StatusCodes } from 'http-status-codes';
 import { EoliaClient, EoliaOperationMode } from 'panasonic-eolia-ts';
 import { getRepository, In } from 'typeorm';
+import { Device } from '../entity/Device';
 import { DeviceStatusLog } from '../entity/DeviceStatusLog';
 import { getDevice, getEoliaStatus, powerOff, powerOn, SUPPORT_MODES_CLEANING, SUPPORT_MODES_OFF, SUPPORT_MODES_ON, updateEoliaStatus } from './common';
 
 function deviceCommandController(router: Router) {
+  const commandRouter = PromiseRouter({ mergeParams: true });
+  router.use('/devices/:id/command', commandRouter);
+
+  commandRouter.use(async (req, res, next) => {
+    const id  = Number(req.params.id);
+    const device = await getDevice(id);
+    if (!device) {
+      throw createHttpError(StatusCodes.NOT_FOUND);
+    }
+    res.locals.device = device;
+    next();
+  });
+
   /**
    * 電源設定
    */
-  router.post('/devices/:id/command/power', async (req, res) => {
+  commandRouter.post('/power', async (req, res) => {
+    const device: Device = res.locals.device;
     const state = String(req.body.value);
     if (state !== 'ON' && state !== 'OFF') throw createHttpError(StatusCodes.BAD_REQUEST);
-
-    const device = await getDevice(Number(req.params.id));
-    if (!device) throw createHttpError(StatusCodes.NOT_FOUND);
 
     res.status(StatusCodes.ACCEPTED).send();
 
@@ -32,11 +45,9 @@ function deviceCommandController(router: Router) {
   /**
    * モード設定
    */
-  router.post('/devices/:id/command/mode', async (req, res) => {
+  commandRouter.post('/mode', async (req, res) => {
+    const device: Device = res.locals.device;
     const mode = String(req.body.value);
-
-    const device = await getDevice(Number(req.params.id));
-    if (!device) throw createHttpError(StatusCodes.NOT_FOUND);
 
     res.status(StatusCodes.ACCEPTED).send();
 
@@ -73,11 +84,9 @@ function deviceCommandController(router: Router) {
   /**
    * 温度設定
    */
-  router.post('/devices/:id/command/temperature', async (req, res) => {
+  commandRouter.post('/temperature', async (req, res) => {
+    const device: Device = res.locals.device;
     const temperature = Number(req.body.value);
-
-    const device = await getDevice(Number(req.params.id));
-    if (!device) throw createHttpError(StatusCodes.NOT_FOUND);
 
     res.status(StatusCodes.ACCEPTED).send();
 

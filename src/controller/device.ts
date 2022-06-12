@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import PromiseRouter from 'express-promise-router';
 import createHttpError from 'http-errors';
 import { StatusCodes } from 'http-status-codes';
 import * as log4js from 'log4js';
@@ -11,6 +12,19 @@ import { publishMqtt, subscribeMqtt, unsubscribeMqtt } from './mqtt';
 const logger = log4js.getLogger();
 
 function deviceController(router: Router) {
+  const idRouter = PromiseRouter({ mergeParams: true });
+  router.use('/devices/:id', idRouter);
+
+  idRouter.use(async (req, res, next) => {
+    const id = Number(req.params.id);
+    const device = await getDevice(id);
+    if (!device) {
+      throw createHttpError(StatusCodes.NOT_FOUND);
+    }
+    res.locals.device = device;
+    next();
+  });
+
   /**
    * デバイス一覧
    */
@@ -30,9 +44,9 @@ function deviceController(router: Router) {
   /**
    * デバイス詳細
    */
-  router.get('/devices/:id', async (req, res) => {
-    const device = await getDevice(Number(req.params.id));
-    if (!device) throw createHttpError(StatusCodes.NOT_FOUND);
+  idRouter.get(/.*/, async (req, res) => {
+    const device: Device = res.locals.device;
+
     const status = await getEoliaStatus(device);
 
     publishMqtt(device, status);
@@ -86,9 +100,8 @@ function deviceController(router: Router) {
   /**
    * デバイス更新
    */
-  router.put('/devices/:id', async (req, res) => {
-    const device = await getDevice(Number(req.params.id));
-    if (!device) throw createHttpError(StatusCodes.NOT_FOUND);
+  idRouter.put(/.*/, async (req, res) => {
+    const device: Device = res.locals.device;
 
     device.deviceName = req.body.deviceName;
 
@@ -100,9 +113,8 @@ function deviceController(router: Router) {
   /**
    * デバイス削除
    */
-  router.delete('/devices/:id', async (req, res) => {
-    const device = await getDevice(Number(req.params.id));
-    if (!device) throw createHttpError(StatusCodes.NOT_FOUND);
+  idRouter.delete(/.*/, async (req, res) => {
+    const device: Device = res.locals.device;
 
     await getRepository(Device).delete(device.id);
 
