@@ -125,12 +125,13 @@ function publishMqtt(device: Device, status: EoliaStatus) {
   mqttClient.publish(`${topicBase}/fan_mode/get`, (() => {
     switch (status.wind_volume) {
     case 2:
-      return 'low';
+      return '1';
     case 3:
-      return 'medium';
+      return '2';
     case 4:
+      return '3';
     case 5:
-      return 'high';
+      return '4';
     default:
       return 'auto';
     }
@@ -248,12 +249,14 @@ async function receiveMqtt(topic: string, payload: Buffer, packet: mqtt.IPublish
     await updateEoliaStatus(device, status);
   } else if (command === 'fan_mode') {
     // MQTT HVAC fan_mode_command_topic
-    if (message === 'low') {
+    if (message === '1') {
       status.wind_volume = 2;
-    } else if (message === 'medium') {
+    } else if (message === '2') {
       status.wind_volume = 3;
-    } else if (message === 'high') {
+    } else if (message === '3') {
       status.wind_volume = 4;
+    } else if (message === '4') {
+      status.wind_volume = 5;
     } else if (message === 'auto') {
       status.wind_volume = 0;
     } else {
