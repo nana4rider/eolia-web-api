@@ -2,13 +2,17 @@
 
 Eolia Web API
 
+Web APIは`Alexa.ThermostatController`で使う分のみで、細かい操作はMQTTのみ対応しています。
+
 # データベース構成の変更
 ```
 npm run miggen -- [name]
 npm run migrun
 ```
 
-# Home Assistantの設定例
+# API
+
+## Home Assistantの設定例(MQTT)
 ```yml
 mqtt:
   climate:
@@ -47,3 +51,61 @@ mqtt:
       command_topic: "eolia/:deviceId/off_timer/set"
       state_topic: "eolia/:deviceId/off_timer/get"
 ```
+
+## Web API
+
+### エアコンの一覧を取得します
+```http
+GET /devices
+```
+
+### エアコンを取得します
+```http
+GET /devices/:id
+```
+
+### エアコンを登録します
+```http
+POST /devices
+```
+
+### エアコンを更新します
+```http
+PUT /devices/:id
+```
+
+### エアコンを削除します
+```http
+DELETE /devices/:id
+```
+
+### エアコンの起動状態を変更します
+```http
+POST /devices/:id/command/power
+```
+request
+```json5
+{
+  "value": "ON|OFF|AUTO"
+}
+```
+
+### エアコンの運転モードを変更します
+```http
+PUT /devices/:id/command/mode
+```
+request
+```json5
+{
+  "value": "Auto|Cooling|Heating|CoolDehumidifying|ClothesDryer|Blast|NanoexCleaning|Cleaning|Stop"
+}
+
+### エアコンの温度設定を変更します
+```http
+PUT /devices/:id/command/temperature
+```
+request
+```json5
+{
+  "value": 20 // 16-30
+}
