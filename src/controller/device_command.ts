@@ -46,19 +46,27 @@ function deviceCommandController(router: Router) {
       if (status.operation_status) return;
 
       let operationMode: EoliaOperationMode | undefined = undefined;
-      const month = DateTime.local().month;
+      const now = DateTime.local();
 
-      if ([6, 7, 8, 9].includes(month)) {
+      const coolingFrom = DateTime.local(now.year, 6, 16);
+      const coolingTo = DateTime.local(now.year, 9, 15);
+      const heating1From = DateTime.local(now.year, 1, 1);
+      const heating1To = DateTime.local(now.year, 3, 31);
+      const heating2From = DateTime.local(now.year, 11, 1);
+      const heating2To = DateTime.local(now.year, 12, 31);
+
+      if (now >= coolingFrom && now <= coolingTo) {
         // 夏
         if (status.inside_temp > 28) {
           // 湿度が高い場合は冷房除湿
-          if (status.inside_humidity >= 70) {
+          if (status.inside_humidity >= 60) {
             operationMode = 'CoolDehumidifying';
           } else {
             operationMode = 'Cooling';
           }
         }
-      } else if ([11, 12, 1, 2, 3].includes(month)) {
+      } else if ((now >= heating1From && now <= heating1To)
+        || (now >= heating2From && now <= heating2To)) {
         // 冬
         if (status.inside_temp < 20) {
           operationMode = 'Heating';
