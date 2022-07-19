@@ -251,12 +251,16 @@ async function receiveMqtt(topic: string, payload: Buffer, packet: mqtt.IPublish
     // MQTT HVAC fan_mode_command_topic
     if (message === '1') {
       status.wind_volume = 2;
+      status.air_flow = 'not_set';
     } else if (message === '2') {
       status.wind_volume = 3;
+      status.air_flow = 'not_set';
     } else if (message === '3') {
       status.wind_volume = 4;
+      status.air_flow = 'not_set';
     } else if (message === '4') {
       status.wind_volume = 5;
+      status.air_flow = 'not_set';
     } else if (message === 'auto') {
       status.wind_volume = 0;
     } else {
