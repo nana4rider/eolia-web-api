@@ -20,7 +20,7 @@ mqtt:
       min_temp: 16
       max_temp: 30
       temp_step: 0.5
-      preset_modes: ["comfort", "boost", "eco", "sleep", "away"]
+      preset_modes: ["comfort", "boost", "eco", "sleep", "away", "cleaning"]
       current_temperature_topic: 'eolia/:deviceId/current_temperature/get'
       mode_command_topic: 'eolia/:deviceId/mode/set'
       mode_state_topic: 'eolia/:deviceId/mode/get'
