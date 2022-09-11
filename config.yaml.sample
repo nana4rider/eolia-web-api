@@ -1,0 +1,24 @@
+typeorm:
+  type: mysql
+  host:
+  port:
+  username:
+  password:
+  database:
+  synchronize: false
+
+eolia:
+  auth:
+    userId:
+    password:
+
+mqtt:
+  broker:
+    protocol: mqtt
+    port: 1883
+    host: localhost
+    username:
+    password:
+
+  qos: 1
+  baseTopic: jema-web-api

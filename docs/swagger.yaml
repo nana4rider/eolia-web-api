@@ -1,0 +1,227 @@
+openapi: 3.0.0
+paths:
+  /devices:
+    get:
+      operationId: DeviceController_index
+      summary: デバイスの一覧を取得
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DeviceListDto'
+      tags: &ref_0
+        - device
+  /devices/{deviceId}:
+    get:
+      operationId: DeviceController_findOne
+      summary: デバイスの詳細を取得
+      parameters:
+        - name: deviceId
+          required: true
+          in: path
+          description: Device ID
+          schema:
+            type: number
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceDetailDto'
+      tags: *ref_0
+  /devices/{deviceId}/command/sync:
+    put:
+      operationId: DeviceCommandController_synchronize
+      summary: デバイスを同期
+      description: デバイスの情報をクラウドと同期します
+      parameters: []
+      responses:
+        '204':
+          description: ''
+      tags: &ref_1
+        - command
+  /devices/{deviceId}/command/send:
+    post:
+      operationId: DeviceCommandController_sendStatus
+      summary: 更新情報を送信
+      parameters:
+        - name: deviceId
+          required: true
+          in: path
+          description: Device ID
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceCommandBodyDto'
+      responses:
+        '202':
+          description: ''
+      tags: *ref_1
+  /devices/{deviceId}/command/auto:
+    post:
+      operationId: DeviceCommandController_automaticJudgment
+      summary: 温湿度を元に、運転モードを自動判断します
+      parameters:
+        - name: deviceId
+          required: true
+          in: path
+          description: Device ID
+          schema:
+            type: number
+      responses:
+        '202':
+          description: ''
+      tags: *ref_1
+info:
+  title: Eolia Unofficial Web API
+  description: Eolia Unofficial Web API
+  version: '2.0'
+  contact: {}
+  license:
+    name: ISC
+    url: https://licenses.opensource.jp/ISC/ISC.html
+tags: []
+servers:
+  - url: http://localhost:3004/v2
+  - url: http://raspberrypi1.local:3004/v2
+components:
+  schemas:
+    DeviceListDto:
+      type: object
+      properties:
+        deviceId:
+          type: number
+          description: デバイスID
+        applianceId:
+          type: string
+          description: 機器ID
+        deviceName:
+          type: string
+          description: デバイス名
+      required:
+        - deviceId
+        - applianceId
+        - deviceName
+    DeviceDetailDto:
+      type: object
+      properties:
+        deviceId:
+          type: number
+          description: デバイスID
+        applianceId:
+          type: string
+          description: 機器ID
+        deviceName:
+          type: string
+          description: デバイス名
+        status:
+          type: object
+          description: Eoliaステータス
+        lastMode:
+          type: string
+          description: 最終運転モード
+          enum:
+            - Auto
+            - Cooling
+            - Heating
+            - CoolDehumidifying
+            - ComfortableDehumidification
+            - ClothesDryer
+            - Blast
+            - Nanoe
+      required:
+        - deviceId
+        - applianceId
+        - deviceName
+        - status
+        - lastMode
+    DeviceCommandBodyDto:
+      type: object
+      properties:
+        operation_status:
+          type: boolean
+          description: 状態
+        nanoex:
+          type: boolean
+          description: ナノイーX
+        wind_volume:
+          type: number
+          description: 風量
+          enum:
+            - 0
+            - 2
+            - 3
+            - 4
+            - 5
+        air_flow:
+          type: string
+          description: 風量オプション
+          enum:
+            - not_set
+            - powerful
+            - long
+            - quiet
+        wind_direction:
+          type: number
+          description: 風向き上下
+          enum:
+            - 0
+            - 1
+            - 2
+            - 3
+            - 4
+            - 5
+        wind_direction_horizon:
+          type: string
+          description: 風向き左右
+          enum:
+            - auto
+            - nearby_left
+            - to_left
+            - to_right
+            - nearby_right
+            - front
+        timer_value:
+          type: number
+          description: 切タイマー
+          enum:
+            - 0
+            - 30
+            - 60
+            - 90
+            - 120
+        operation_mode:
+          type: string
+          description: 運転モード
+          enum:
+            - Stop
+            - Auto
+            - Cooling
+            - Heating
+            - ComfortableDehumidification
+            - CoolDehumidifying
+            - ClothesDryer
+            - Blast
+            - Nanoe
+            - Cleaning
+            - NanoexCleaning
+        temperature:
+          type: number
+          description: 設定温度
+        ai_control:
+          type: string
+          description: AIコントロール
+          enum:
+            - 'off'
+            - comfortable
+            - comfortable_econavi
