@@ -136,6 +136,8 @@ export class EoliaService implements OnApplicationBootstrap {
       lock: { mode: 'pessimistic_write' },
     });
 
+    void this.mqttService.publishState(deviceId, status); // 更新APIが遅いので、更新前にも配信
+
     status = await this.eoliaRepository.setStatus(status);
 
     void this.mqttService.publishState(deviceId, status);
