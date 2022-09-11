@@ -313,27 +313,30 @@ export class EoliaService implements OnApplicationBootstrap {
       assert(updateData.operation_mode !== undefined);
       assert(updateData.operation_status !== undefined);
 
-      // 風量指定時、AIコントロールの指定がなければAI快適をつけておく(独自ルール)
       if (
         updateData.wind_volume !== undefined &&
         updateData.ai_control === undefined
       ) {
+        // 風量指定時、AIコントロールの指定がなければAI快適をつけておく(独自ルール)
         updateData.ai_control = 'comfortable';
       }
 
-      // 設定温度、AI未サポート
       if (!EoliaClient.isTemperatureSupport(updateData.operation_mode)) {
+        // 設定温度、AI未サポート
         delete updateData.temperature;
         delete updateData.ai_control;
       }
 
-      // パワフルや静かは、風量とAIの指定ができない
       if (
         updateData.air_flow !== undefined &&
         updateData.air_flow !== 'not_set'
       ) {
+        // パワフルや静かは、風量とAIの指定ができない
         delete updateData.wind_volume;
         delete updateData.ai_control;
+      } else if (updateData.wind_volume !== undefined) {
+        // 風量設定時は、風量オプションを設定できない
+        updateData.air_flow = 'not_set';
       }
 
       // 温度設定を0.5度単位に丸める
