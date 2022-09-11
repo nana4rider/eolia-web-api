@@ -292,7 +292,10 @@ export class MqttService implements OnModuleInit {
   }
 
   private toMqttTemperature(status: EoliaStatus): string {
-    if (EoliaClient.isTemperatureSupport(status.operation_mode)) {
+    if (
+      status.operation_status &&
+      EoliaClient.isTemperatureSupport(status.operation_mode)
+    ) {
       return String(status.temperature);
     } else {
       return '0';
