@@ -325,7 +325,7 @@ export class EoliaService implements OnApplicationBootstrap {
       if (!EoliaClient.isTemperatureSupport(updateData.operation_mode)) {
         // 設定温度、AI未サポート
         delete updateData.temperature;
-        delete updateData.ai_control;
+        updateData.ai_control = 'off';
       }
 
       if (
@@ -333,7 +333,7 @@ export class EoliaService implements OnApplicationBootstrap {
         updateData.air_flow !== 'not_set'
       ) {
         // パワフルや静かは、風量とAIの指定ができない
-        delete updateData.wind_volume;
+        updateData.wind_volume = 0;
         updateData.ai_control = 'off';
       } else if (updateData.wind_volume !== undefined) {
         // 風量設定時は、風量オプションを設定できない
