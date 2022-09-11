@@ -339,11 +339,6 @@ export class EoliaService implements OnApplicationBootstrap {
           updateData.air_flow = 'not_set';
         }
 
-        // 温度設定を0.5度単位に丸める
-        if (updateData.temperature !== undefined) {
-          // TODO
-        }
-
         const updateStatus = Object.assign({}, currentStatus, updateData);
 
         if (deepEqual(currentStatus, updateStatus)) {
