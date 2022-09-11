@@ -35,7 +35,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/DeviceDetailDto'
       tags: *ref_0
-  /devices/{deviceId}/command/sync:
+  /devices/command/sync:
     put:
       operationId: DeviceCommandController_synchronize
       summary: デバイスを同期

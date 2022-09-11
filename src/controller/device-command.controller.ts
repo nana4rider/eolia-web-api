@@ -24,7 +24,7 @@ export class DeviceCommandController {
     summary: 'デバイスを同期',
     description: 'デバイスの情報をクラウドと同期します',
   })
-  @Put(':deviceId/command/sync')
+  @Put('command/sync')
   @HttpCode(HttpStatus.NO_CONTENT)
   async synchronize(): Promise<void> {
     await this.eoliaService.synchronize();
