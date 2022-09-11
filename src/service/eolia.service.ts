@@ -234,128 +234,116 @@ export class EoliaService implements OnApplicationBootstrap {
     await this.dataSource.transaction(async (manager) => {
       const currentStatus = await this.getStatus(device, manager);
 
-      const updated = await (async (): Promise<boolean> => {
-        if (updateData.operation_mode !== undefined) {
-          // モード指定あり
-          if (
-            currentStatus.operation_mode === 'Stop' &&
-            updateData.operation_mode === 'Stop'
-          ) {
-            return false;
-          }
+      if (updateData.operation_mode !== undefined) {
+        // モード指定あり
+        if (
+          currentStatus.operation_mode === 'Stop' &&
+          updateData.operation_mode === 'Stop'
+        ) {
+          return;
+        }
 
-          // 温度設定とAIコントロールは、モードごとに保持している値を使う
-          if (EoliaClient.isTemperatureSupport(updateData.operation_mode)) {
-            const lastStatus = await this.deviceStatusLogService.getLastStatus(
-              deviceId,
-              updateData.operation_mode,
-            );
-
-            if (updateData.temperature === undefined) {
-              updateData.temperature = lastStatus?.temperature ?? 20;
-            }
-
-            if (updateData.ai_control === undefined) {
-              updateData.ai_control = lastStatus?.ai_control ?? 'comfortable';
-            }
-          }
-
-          // 状態はモードから自動決定
-          updateData.operation_status = EoliaService.MODES_ACTIVE.includes(
+        // 温度設定とAIコントロールは、モードごとに保持している値を使う
+        if (EoliaClient.isTemperatureSupport(updateData.operation_mode)) {
+          const lastStatus = await this.deviceStatusLogService.getLastStatus(
+            deviceId,
             updateData.operation_mode,
           );
-        } else {
-          // モード指定なし
-          if (updateData.operation_status === undefined) {
-            updateData.operation_status = currentStatus.operation_status;
+
+          if (updateData.temperature === undefined) {
+            updateData.temperature = lastStatus?.temperature ?? 20;
           }
 
-          if (currentStatus.operation_status) {
-            // ON → ON or OFF
-            updateData.operation_mode = currentStatus.operation_mode;
-          } else {
-            if (updateData.operation_status === true) {
-              // OFF → ON
-              const lastActiveStatus =
-                await this.deviceStatusLogService.getLastActiveStatus(deviceId);
+          if (updateData.ai_control === undefined) {
+            updateData.ai_control = lastStatus?.ai_control ?? 'comfortable';
+          }
+        }
 
-              // 前回のモードで起動する
-              if (lastActiveStatus) {
-                updateData.operation_mode = lastActiveStatus.operation_mode;
-                if (updateData.temperature === undefined) {
-                  updateData.temperature = lastActiveStatus.temperature;
-                }
-                if (updateData.ai_control === undefined) {
-                  updateData.ai_control = lastActiveStatus.ai_control;
-                }
-              } else {
-                updateData.operation_mode = 'Auto';
-                if (updateData.temperature === undefined) {
-                  updateData.temperature = 20;
-                }
-                if (updateData.ai_control === undefined) {
-                  updateData.ai_control = 'comfortable';
-                }
+        // 状態はモードから自動決定
+        updateData.operation_status = EoliaService.MODES_ACTIVE.includes(
+          updateData.operation_mode,
+        );
+      } else {
+        // モード指定なし
+        if (updateData.operation_status === undefined) {
+          updateData.operation_status = currentStatus.operation_status;
+        }
+
+        if (currentStatus.operation_status) {
+          // ON → ON or OFF
+          updateData.operation_mode = currentStatus.operation_mode;
+        } else {
+          if (updateData.operation_status === true) {
+            // OFF → ON
+            const lastActiveStatus =
+              await this.deviceStatusLogService.getLastActiveStatus(deviceId);
+
+            // 前回のモードで起動する
+            if (lastActiveStatus) {
+              updateData.operation_mode = lastActiveStatus.operation_mode;
+              if (updateData.temperature === undefined) {
+                updateData.temperature = lastActiveStatus.temperature;
+              }
+              if (updateData.ai_control === undefined) {
+                updateData.ai_control = lastActiveStatus.ai_control;
               }
             } else {
-              // OFF → OFF
-              return false;
+              updateData.operation_mode = 'Auto';
+              if (updateData.temperature === undefined) {
+                updateData.temperature = 20;
+              }
+              if (updateData.ai_control === undefined) {
+                updateData.ai_control = 'comfortable';
+              }
             }
+          } else {
+            // OFF → OFF
+            return;
           }
         }
+      }
 
-        if (updateData.operation_mode === 'Stop') {
-          updateData.operation_mode = 'Auto';
-        } else if (updateData.operation_mode === 'Nanoe') {
-          updateData.operation_mode = 'Blast';
-          updateData.nanoex = true;
-        }
+      if (updateData.operation_mode === 'Stop') {
+        updateData.operation_mode = 'Auto';
+      } else if (updateData.operation_mode === 'Nanoe') {
+        updateData.operation_mode = 'Blast';
+        updateData.nanoex = true;
+      }
 
-        assert(updateData.operation_mode !== undefined);
-        assert(updateData.operation_status !== undefined);
+      assert(updateData.operation_mode !== undefined);
+      assert(updateData.operation_status !== undefined);
 
-        if (
-          updateData.wind_volume !== undefined &&
-          updateData.ai_control === undefined &&
-          currentStatus.ai_control === 'off'
-        ) {
-          // 風量指定時、AIコントロールの指定がなければAI快適をつけておく(独自ルール)
-          updateData.ai_control = 'comfortable';
-        }
+      if (
+        updateData.wind_volume !== undefined &&
+        updateData.ai_control === undefined &&
+        currentStatus.ai_control === 'off'
+      ) {
+        // 風量指定時、AIコントロールの指定がなければAI快適をつけておく(独自ルール)
+        updateData.ai_control = 'comfortable';
+      }
 
-        if (!EoliaClient.isTemperatureSupport(updateData.operation_mode)) {
-          // 設定温度、AI未サポート
-          delete updateData.temperature;
-          delete updateData.ai_control;
-        }
+      if (!EoliaClient.isTemperatureSupport(updateData.operation_mode)) {
+        // 設定温度、AI未サポート
+        delete updateData.temperature;
+        delete updateData.ai_control;
+      }
 
-        if (
-          updateData.air_flow !== undefined &&
-          updateData.air_flow !== 'not_set'
-        ) {
-          // パワフルや静かは、風量とAIの指定ができない
-          delete updateData.wind_volume;
-          updateData.ai_control = 'off';
-        } else if (updateData.wind_volume !== undefined) {
-          // 風量設定時は、風量オプションを設定できない
-          updateData.air_flow = 'not_set';
-        }
+      if (
+        updateData.air_flow !== undefined &&
+        updateData.air_flow !== 'not_set'
+      ) {
+        // パワフルや静かは、風量とAIの指定ができない
+        delete updateData.wind_volume;
+        updateData.ai_control = 'off';
+      } else if (updateData.wind_volume !== undefined) {
+        // 風量設定時は、風量オプションを設定できない
+        updateData.air_flow = 'not_set';
+      }
 
-        const updateStatus = Object.assign({}, currentStatus, updateData);
+      const updateStatus = Object.assign({}, currentStatus, updateData);
 
-        if (deepEqual(currentStatus, updateStatus)) {
-          return false;
-        }
-
+      if (!deepEqual(currentStatus, updateStatus)) {
         await this.setStatusInner(device, updateStatus, manager);
-        return true;
-      })();
-
-      if (!updated) {
-        setTimeout(
-          () => void this.mqttService.publishState(deviceId, currentStatus),
-          500,
-        );
       }
     });
   }
