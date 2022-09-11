@@ -53,7 +53,7 @@ export class MqttRepository implements OnModuleInit {
     return this.client.publish(
       `${this.baseTopic}/${deviceId}/${property}/get`,
       value,
-      { retain: true, qos: 0 },
+      { retain: true, qos: this.qos },
     );
   }
 
