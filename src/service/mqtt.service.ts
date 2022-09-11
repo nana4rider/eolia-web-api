@@ -97,7 +97,6 @@ export class MqttService implements OnModuleInit {
           return;
         }
 
-        // TODO 溜めて送信する方法を検討
         try {
           const data = parser(value);
           callback(deviceId, data);
