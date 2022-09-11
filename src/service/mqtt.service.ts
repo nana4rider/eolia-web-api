@@ -268,6 +268,10 @@ export class MqttService implements OnModuleInit {
   }
 
   private toMqttMode(status: EoliaStatus): string {
+    if (!status.operation_status) {
+      return 'off';
+    }
+
     switch (status.operation_mode) {
       case 'Auto': // 自動
         return 'auto';
