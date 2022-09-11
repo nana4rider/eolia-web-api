@@ -350,7 +350,10 @@ export class EoliaService implements OnApplicationBootstrap {
       })();
 
       if (!updated) {
-        void this.mqttService.publishState(deviceId, currentStatus);
+        setTimeout(
+          () => void this.mqttService.publishState(deviceId, currentStatus),
+          500,
+        );
       }
     });
   }
