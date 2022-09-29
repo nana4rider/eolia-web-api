@@ -37,6 +37,8 @@ export class EoliaService implements OnApplicationBootstrap {
     'Cleaning',
   ];
 
+  public static readonly REFRESH_INTERVAL = 3_600_000;
+
   constructor(
     private readonly eoliaRepository: EoliaRepository,
     private readonly deviceService: DeviceService,
@@ -57,6 +59,11 @@ export class EoliaService implements OnApplicationBootstrap {
         await this.setStatus(device, data);
       },
     );
+
+    setInterval(async () => {
+      const devices = await this.deviceService.find();
+      devices.forEach((device) => this.getStatus(device));
+    }, EoliaService.REFRESH_INTERVAL);
   }
 
   /**
